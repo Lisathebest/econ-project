@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Community Garden Externalities</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f9f0;
+            color: #333;
+            line-height: 1.6;
+            padding: 10px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: linear-gradient(135deg, #4c7c5e, #2c5530);
+            color: white;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            font-size: 2.2rem;
+            margin-bottom: 8px;
+        }
+        
+        .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .map-container {
+            flex: 3;
+            min-width: 300px;
+            position: relative;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+            background-color: #fff;
+            height: 0;
+            padding-bottom: 66.67%; /* 3:2 宽高比，保持图片比例 */
+        }
+        
+        .map-image {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+        }
+        
+        .hotspot {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: rgba(76, 175, 80, 0.7);
+            border: 3px solid white;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-weight: bold;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+            z-index: 10;
+        }
+        
+        .hotspot:hover {
+            transform: scale(1.2);
+            background-color: rgba(76, 175, 80, 0.9);
+        }
+        
+        .hotspot i {
+            font-size: 1.2rem;
+        }
+        
+        /* 基于实际拖拽位置的百分比定位 */
+        .hotspot-1 { top: 40%; left: 45%; } /* Café */
+        .hotspot-2 { top: 50%; left: 28%; } /* Bee Keeper's Yard */
+        .hotspot-3 { top: 46%; left: 58%; } /* Gardening Class */
+        .hotspot-4 { top: 58%; left: 53%; } /* Community Garden */
+        .hotspot-5 { top: 36%; left: 90%; } /* Pizza Shop */
+        .hotspot-6 { top: 34%; left: 18%; } /* Solar Panel Installation */
+        
+        /* 调整transform使热点在正确位置 */
+        .hotspot-3, .hotspot-5 {
+            transform: translate(50%, -50%); /* 右侧的热点 */
+        }
+        
+        .hotspot-1, .hotspot-2, .hotspot-4, .hotspot-6 {
+            transform: translate(-50%, -50%); /* 左侧和中间的热点 */
+        }
+        
+        .info-panel {
+            flex: 2;
+            min-width: 300px;
+            background-color: white;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .info-title {
+            color: #2c5530;
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e0f0e5;
+        }
+        
+        .selection-area {
+            margin-bottom: 25px;
+        }
+        
+        .externality-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 10px;
+        }
+        
+        .externality-btn {
+            padding: 12px;
+            background-color: #f0f7f2;
+            border: 2px solid #d1e7dd;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            text-align: center;
+            transition: all 0.2s;
+        }
+        
+        .externality-btn:hover {
+            background-color: #e2f0e9;
+            transform: translateY(-2px);
+        }
+        
+        .positive-production {
+            color: #0d6efd;
+            border-color: #0d6efd;
+        }
+        
+        .positive-consumption {
+            color: #198754;
+            border-color: #198754;
+        }
+        
+        .negative-production {
+            color: #fd7e14;
+            border-color: #fd7e14;
+        }
+        
+        .negative-consumption {
+            color: #dc3545;
+            border-color: #dc3545;
+        }
+        
+        .result-area {
+            flex-grow: 1;
+            display: none;
+        }
+        
+        .graph-container {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .graph-container img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            margin-bottom: 15px;
+        }
+        
+        .explanation {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 5px solid #4c7c5e;
+        }
+        
+        .toolbox {
+            background-color: white;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .toolbox-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr); /* 改为3列布局 */
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        @media (max-width: 1024px) {
+        .toolbox-grid {
+                grid-template-columns: repeat(2, 1fr); /* 中等屏幕显示2列 */
+            }
+        }
+        
+        @media (max-width: 768px) {
+        .toolbox-grid {
+                grid-template-columns: 1fr; /* 小屏幕显示1列 */
+            }
+        }
+        
+        .toolbox-card {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border-top: 4px solid #4c7c5e;
+        }
+        
+        .toolbox-card h3 {
+            color: #2c5530;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+        
+        .toolbox-card ul {
+            padding-left: 20px;
+            margin-bottom: 15px;
+        }
+        
+        .toolbox-card li {
+            margin-bottom: 8px;
+        }
+        
+        .toolbox-graph {
+            text-align: center;
+            margin-top: 15px;
+        }
+        
+        .toolbox-graph img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        }
+                .toolbox-graph img { /* 第306行 */
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        } /* 第310行结束 */
+        
+        /* ▼▼▼ 在这里添加分类游戏样式 ▼▼▼ */
+        /* 分类游戏样式 */
+        .game-container {
+            margin-top: 15px;
+        }
+        
+        .game-categories {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .category {
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .category.public-good {
+            background-color: #e7f3ff;
+            border: 2px solid #0d6efd;
+        }
+        
+        .category.private-good {
+            background-color: #e7f5f3;
+            border: 2px solid #198754;
+        }
+        
+        .category h4 {
+            margin-bottom: 8px;
+            color: #2c5530;
+        }
+        
+        .category-box {
+            min-height: 60px;
+            padding: 10px;
+            border-radius: 6px;
+            background-color: rgba(255, 255, 255, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .game-items {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .item {
+            padding: 10px;
+            background-color: #f8f9fa;
+            border: 2px dashed #dee2e6;
+            border-radius: 6px;
+            text-align: center;
+            cursor: move;
+            transition: all 0.2s;
+            user-select: none;
+        }
+        
+        .item:hover {
+            background-color: #e9ecef;
+            transform: translateY(-2px);
+        }
+        
+        .item.dragging {
+            opacity: 0.5;
+            border-style: solid;
+        }
+        
+        .item.placed {
+            opacity: 0.7;
+            cursor: default;
+        }
+        
+        .game-feedback {
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            display: none;
+        }
+        
+        .game-feedback.success {
+            background-color: #d1e7dd;
+            color: #0f5132;
+            border-left: 5px solid #198754;
+            display: block;
+        }
+        
+        .game-feedback.error {
+            background-color: #f8d7da;
+            color: #842029;
+            border-left: 5px solid #dc3545;
+            display: block;
+        }
+        
+        .game-check-btn, .game-reset-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-right: 10px;
+            margin-top: 10px;
+        }
+        
+        .game-check-btn {
+            background-color: #4c7c5e;
+            color: white;
+        }
+        
+        .game-reset-btn {
+            background-color: #6c757d;
+            color: white;
+        }
+        
+        .game-check-btn:hover {
+            background-color: #3c6c4e;
+        }
+        
+        .game-reset-btn:hover {
+            background-color: #5a6268;
+        }
+        /* ▲▲▲ 在这里添加分类游戏样式 ▲▲▲ */
+        
+        .feedback { /* 第311行继续 */
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            display: none;
+        }
+        .feedback {
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            display: none;
+        }
+        
+        .correct {
+            background-color: #d1e7dd;
+            color: #0f5132;
+            border-left: 5px solid #198754;
+        }
+        
+        .incorrect {
+            background-color: #f8d7da;
+            color: #842029;
+            border-left: 5px solid #dc3545;
+        }
+        
+        .location-name {
+            font-size: 1.4rem;
+            color: #2c5530;
+            margin-bottom: 10px;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+            
+            .map-container {
+                padding-bottom: 75%; /* 移动设备上调整宽高比 */
+            }
+            
+            .externality-options {
+                grid-template-columns: 1fr;
+            }
+            
+            .hotspot {
+                width: 35px;
+                height: 35px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Community Garden Externalities</h1>
+        <p class="subtitle">Click on the locations to learn about positive and negative externalities in economics</p>
+    </header>
+    
+    <div class="container">
+        <div class="map-container">
+            <img src="nanobanana-edited-2025-12-12T13-25-42-982Z.png" alt="Community Garden Map" class="map-image">
+            
+            <!-- Interactive hotspots -->
+            <div class="hotspot hotspot-1" data-location="cafe" data-name="Mirasco Café">
+                <i class="fas fa-coffee"></i>
+            </div>
+            <div class="hotspot hotspot-2" data-location="beekeeper" data-name="Beekeeper's Backyard">
+                <i class="fas fa-bee"></i>
+            </div>
+            <div class="hotspot hotspot-3" data-location="gardeningclass" data-name="Gardening Class">
+                <i class="fas fa-seedling"></i>
+            </div>
+            <div class="hotspot hotspot-4" data-location="communitygarden" data-name="Community Garden">
+                <i class="fas fa-leaf"></i>
+            </div>
+            <div class="hotspot hotspot-5" data-location="pizzashop" data-name="Pizza Shop">
+                <i class="fas fa-pizza-slice"></i>
+            </div>
+            <div class="hotspot hotspot-6" data-location="solar" data-name="Solar Panel Installation">
+                <i class="fas fa-solar-panel"></i>
+            </div>
+        </div>
+        
+        <div class="info-panel">
+            <div class="selection-area">
+                <h2 class="info-title">Select Externality Type</h2>
+                <p>Click on a location on the map, then select the correct externality type:</p>
+                
+                <div class="externality-options">
+                    <div class="externality-btn positive-production">Positive Production</div>
+                    <div class="externality-btn positive-consumption">Positive Consumption</div>
+                    <div class="externality-btn negative-production">Negative Production</div>
+                    <div class="externality-btn negative-consumption">Negative Consumption</div>
+                </div>
+                
+                <div class="feedback" id="feedback">
+                    <!-- Feedback will be shown here -->
+                </div>
+            </div>
+            
+            <div class="result-area" id="result-area">
+                <h2 class="location-name" id="location-name">Location Name</h2>
+                
+                <div class="graph-container">
+                    <img id="externality-graph" src="" alt="Externality Graph">
+                </div>
+                
+                <div class="explanation">
+                    <h3>Explanation:</h3>
+                    <p id="explanation-text"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="toolbox">
+        <h2 class="info-title">Economics Toolbox</h2>
+        
+        <div class="toolbox-grid">
+            <div class="toolbox-card">
+                <h3>Key Definitions</h3>
+                <ul>
+                    <li><strong>Externality:</strong> A side effect of an activity that affects third parties not directly involved in the activity.</li>
+                    <li><strong>Positive Externality:</strong> Benefits received by third parties (social benefit > private benefit).</li>
+                    <li><strong>Negative Externality:</strong> Costs imposed on third parties (social cost > private cost).</li>
+                    <li><strong>Production Externality:</strong> Arises from production activities.</li>
+                    <li><strong>Consumption Externality:</strong> Arises from consumption activities.</li>
+                </ul>
+            </div>
+            
+            <div class="toolbox-card">
+                <h3>Public vs. Private Goods</h3>
+                <ul>
+                    <li><strong>Public Good Characteristics:</strong>
+                        <ul>
+                            <li>Non-excludable: Cannot prevent others from using</li>
+                            <li>Non-rivalrous: One person's use doesn't reduce availability</li>
+                        </ul>
+                    </li>
+                    <li><strong>Private Good Characteristics:</strong>
+                        <ul>
+                            <li>Excludable: Can prevent others from using</li>
+                            <li>Rivalrous: One person's use reduces availability</li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+            
+            <div class="toolbox-card">
+                <h3>Government Intervention</h3>
+                <ul>
+                    <li><strong>Per Unit Tax (Pigouvian Tax):</strong> Applied to negative externalities to internalize the external cost. Shifts supply curve left (MPC up to MSC).</li>
+                    <li><strong>Per Unit Subsidy:</strong> Applied to positive externalities to internalize the external benefit. Shifts demand curve right (MPB up to MSB).</li>
+                    <li><strong>Why not Lump Sum?</strong> Per unit interventions directly affect the marginal decision, while lump sum doesn't change the optimal quantity.</li>
+                </ul>
+            </div>
+        </div>
+        
+                <div class="toolbox-grid"> <!-- 第二个toolbox-grid开始 - 第335行 -->
+            <div class="toolbox-card"> <!-- Negative Externality Correction -->
+                <h3>Negative Externality Correction</h3>
+                <p>Government imposes a per-unit tax equal to the external cost, shifting MPC up to MSC.</p>
+                <div class="toolbox-graph">
+                    <img src="https://www.reviewecon.com/wp-content/uploads/2018/04/negative-externalitiy-per-unit-tax-correction-graph_orig.png" alt="Negative Externality Correction Graph">
+                </div>
+            </div>
+            
+            <div class="toolbox-card"> <!-- Positive Externality Correction -->
+                <h3>Positive Externality Correction</h3>
+                <p>Government provides a per-unit subsidy equal to the external benefit, shifting MPB up to MSB.</p>
+                <div class="toolbox-graph">
+                    <img src="https://www.reviewecon.com/wp-content/uploads/2018/04/positive-externalitiy-consumer-subsidy-correction-graph_orig.png" alt="Positive Externality Correction Graph">
+                </div>
+            </div>
+            
+            <!-- 添加分类游戏到同一行 -->
+            <div class="toolbox-card"> <!-- Goods Classification Game -->
+                <h3>Goods Classification Game</h3>
+                <p>Drag each item to the correct category:</p>
+                
+                <div class="game-container">
+                    <div class="game-categories">
+                        <div class="category public-good" data-category="public">
+                            <h4>Public Goods</h4>
+                            <div class="category-box">
+                                <p>Non-excludable & Non-rivalrous</p>
+                            </div>
+                        </div>
+                        
+                        <div class="category private-good" data-category="private">
+                            <h4>Private Goods</h4>
+                            <div class="category-box">
+                                <p>Excludable & Rivalrous</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="game-items">
+                        <div class="item" data-item="solar-panel" data-correct="private">Solar Panel</div>
+                        <div class="item" data-item="pizza" data-correct="private">Pizza</div>
+                        <div class="item" data-item="street-lamp" data-correct="public">Street Lamp</div>
+                        <div class="item" data-item="cars" data-correct="private">Cars</div>
+                        <div class="item" data-item="mail-box" data-correct="private">Mail Box</div>
+                        <div class="item" data-item="tree" data-correct="public">Tree (in public park)</div>
+                        <div class="item" data-item="sunlight" data-correct="public">Sunlight</div>
+                        <div class="item" data-item="street-guards" data-correct="public">Street Guards (security)</div>
+                        <div class="item" data-item="community-park" data-correct="public">Community Park</div>
+                        <div class="item" data-item="house" data-correct="private">House</div>
+                    </div>
+                    
+                    <div class="game-feedback" id="game-feedback"></div>
+                    <button class="game-check-btn" id="check-game">Check Answers</button>
+                    <button class="game-reset-btn" id="reset-game">Reset Game</button>
+                </div>
+            </div>
+        </div> <!-- 第二个toolbox-grid结束 -->
+    </div>
+    
+    <script>
+        // Data for each location
+        const locations = {
+            cafe: {
+                name: "Mirasco Café",
+                correctType: "negative-consumption",
+                graph: "https://img.sanishtech.com/u/f3c6df7d52cb65340076f91870f9ead0.png",
+                explanation: "The café plays loud music to attract customers, creating noise pollution that disrupts nearby residents and garden visitors. This is a negative consumption externality because café patrons enjoy the music (private benefit) while imposing uncompensated noise costs on third parties, leading to overconsumption of loud music beyond the socially optimal level."
+            },
+            beekeeper: {
+                name: "Beekeeper's Backyard",
+                correctType: "positive-production",
+                graph: "https://img.sanishtech.com/u/0be2d9aaf38d3cc44905d4117331a63b.png",
+                explanation: "The beekeeper's hives provide free pollination services to the community garden and surrounding area, increasing crop yields and biodiversity. This is a positive production externality because the beekeeper produces honey for private gain while creating unpaid benefits for third parties, leading to underproduction of beekeeping services relative to the social optimum."
+            },
+            gardeningclass: {
+                name: "Gardening Class",
+                correctType: "positive-consumption",
+                graph: "https://img.sanishtech.com/u/50b7ab5b3302db97a4712afc7ad58d94.png",
+                explanation: "Free gardening classes teach sustainable practices that participants apply in their own gardens, reducing chemical use and increasing local food production. This is a positive consumption externality because participants gain knowledge (private benefit) while creating broader environmental and community health benefits, leading to underconsumption of education relative to the social optimum."
+            },
+            communitygarden: {
+                name: "Community Garden",
+                correctType: "positive-consumption",
+                graph: "https://img.sanishtech.com/u/a4b07f1dbe4b71dba16bd80cb76a2f56.png",
+                explanation: "The community garden provides fresh produce and green space that improves neighborhood aesthetics, air quality, and social cohesion. This is a positive consumption externality because gardeners enjoy gardening (private benefit) while creating uncompensated benefits for the wider community through improved environment and property values."
+            },
+            pizzashop: {
+                name: "Pizza Shop",
+                correctType: "negative-production",
+                graph: "https://img.sanishtech.com/u/76831ee2c7b6c1e1912ffa071209b19e.png",
+                explanation: "The pizza shop's oven emits smoke and odors that affect air quality around the garden, and delivery vehicles cause traffic congestion. This is a negative production externality because the shop produces pizza for profit while imposing uncompensated air pollution and congestion costs on third parties, leading to overproduction of pizza relative to the social optimum."
+            },
+            solar: {
+                name: "Solar Panel Installation",
+                correctType: "positive-consumption",
+                graph: "https://img.sanishtech.com/u/008f89480820e2460edcd92b24b05a19.png",
+                explanation: "Home solar panels generate clean electricity that reduces reliance on fossil fuels, lowering greenhouse gas emissions for the entire community. This is a positive consumption externality because the homeowner saves on energy bills (private benefit) while creating uncompensated environmental benefits through reduced air pollution and climate impact."
+            }
+        };
+        
+        // DOM elements
+        const hotspots = document.querySelectorAll('.hotspot');
+        const externalityBtns = document.querySelectorAll('.externality-btn');
+        const resultArea = document.getElementById('result-area');
+        const locationName = document.getElementById('location-name');
+        const externalityGraph = document.getElementById('externality-graph');
+        const explanationText = document.getElementById('explanation-text');
+        const feedback = document.getElementById('feedback');
+        
+        let selectedLocation = null;
+        
+        // Add click event to each hotspot
+        hotspots.forEach(hotspot => {
+            hotspot.addEventListener('click', function() {
+                const locationId = this.getAttribute('data-location');
+                selectedLocation = locations[locationId];
+                
+                // Update UI to show selection
+                locationName.textContent = selectedLocation.name;
+                
+                // Reset result area and feedback
+                resultArea.style.display = 'none';
+                feedback.style.display = 'none';
+                feedback.className = 'feedback';
+                
+                // Highlight the selected hotspot
+                hotspots.forEach(h => h.style.backgroundColor = 'rgba(76, 175, 80, 0.7)');
+                this.style.backgroundColor = 'rgba(255, 193, 7, 0.9)';
+                
+                // Show instruction
+                feedback.style.display = 'block';
+                feedback.className = 'feedback';
+                feedback.innerHTML = `<p>Selected: <strong>${selectedLocation.name}</strong>. Now select the correct externality type.</p>`;
+            });
+        });
+        
+        // Add click event to externality buttons
+        externalityBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                if (!selectedLocation) {
+                    feedback.style.display = 'block';
+                    feedback.className = 'feedback incorrect';
+                    feedback.innerHTML = '<p>Please select a location on the map first!</p>';
+                    return;
+                }
+                
+                const selectedType = this.classList.contains('positive-production') ? 'positive-production' :
+                                   this.classList.contains('positive-consumption') ? 'positive-consumption' :
+                                   this.classList.contains('negative-production') ? 'negative-production' :
+                                   'negative-consumption';
+                
+                // Check if correct
+                const isCorrect = selectedType === selectedLocation.correctType;
+                
+                // Show feedback
+                feedback.style.display = 'block';
+                feedback.className = isCorrect ? 'feedback correct' : 'feedback incorrect';
+                
+                if (isCorrect) {
+                    feedback.innerHTML = `<p><i class="fas fa-check-circle"></i> Correct! ${selectedLocation.name} creates a ${selectedType.replace('-', ' ')} externality.</p>`;
+                    
+                    // Show result area with graph and explanation
+                    resultArea.style.display = 'block';
+                    externalityGraph.src = selectedLocation.graph;
+                    externalityGraph.alt = `${selectedLocation.name} Externality Graph`;
+                    explanationText.textContent = selectedLocation.explanation;
+                    
+                    // Add class to highlight the correct button
+                    externalityBtns.forEach(b => b.style.borderWidth = '2px');
+                    this.style.borderWidth = '4px';
+                } else {
+                    // Get correct type name for feedback
+                    const correctTypeName = selectedLocation.correctType.replace('-', ' ');
+                    feedback.innerHTML = `<p><i class="fas fa-times-circle"></i> Incorrect. The correct answer is <strong>${correctTypeName}</strong> externality.</p>`;
+                    
+                    // Highlight the correct button
+                    externalityBtns.forEach(b => {
+                        b.style.borderWidth = '2px';
+                        if (b.classList.contains(selectedLocation.correctType)) {
+                            b.style.borderWidth = '4px';
+                        }
+                    });
+                }
+            });
+        });
+        
+        // Initialize by selecting the first location
+        hotspots[0].click();
+        const gameItems = document.querySelectorAll('.item');
+        const categories = document.querySelectorAll('.category-box');
+        const gameFeedback = document.getElementById('game-feedback');
+        const checkGameBtn = document.getElementById('check-game');
+        const resetGameBtn = document.getElementById('reset-game');
+        
+        let draggedItem = null;
+        
+        // 拖拽功能
+        gameItems.forEach(item => {
+            item.setAttribute('draggable', 'true');
+            
+            item.addEventListener('dragstart', function(e) {
+                draggedItem = this;
+                this.classList.add('dragging');
+                e.dataTransfer.setData('text/plain', this.dataset.item);
+            });
+            
+            item.addEventListener('dragend', function() {
+                this.classList.remove('dragging');
+                draggedItem = null;
+            });
+        });
+        
+        categories.forEach(category => {
+            category.addEventListener('dragover', function(e) {
+                e.preventDefault();
+            });
+            
+            category.addEventListener('drop', function(e) {
+                e.preventDefault();
+                if (draggedItem) {
+                    // 检查是否已经放置在其他地方
+                    const existingPlacement = draggedItem.dataset.placedIn;
+                    if (existingPlacement) {
+                        // 从原位置移除
+                        const originalCategory = document.querySelector(`[data-category="${existingPlacement}"] .category-box`);
+                        const itemInOriginal = originalCategory.querySelector(`[data-item="${draggedItem.dataset.item}"]`);
+                        if (itemInOriginal) {
+                            itemInOriginal.remove();
+                        }
+                    }
+                    
+                    // 放置到新位置
+                    draggedItem.dataset.placedIn = this.parentElement.dataset.category;
+                    draggedItem.classList.add('placed');
+                    
+                    // 克隆并放置项目
+                    const clonedItem = draggedItem.cloneNode(true);
+                    clonedItem.classList.add('placed');
+                    clonedItem.setAttribute('draggable', 'false');
+                    this.appendChild(clonedItem);
+                }
+            });
+        });
+        
+        // 检查答案
+        checkGameBtn.addEventListener('click', function() {
+            let correctCount = 0;
+            let totalItems = gameItems.length;
+            
+            // 检查每个项目是否在正确的位置
+            gameItems.forEach(item => {
+                const placedIn = item.dataset.placedIn;
+                const correctCategory = item.dataset.correct;
+                
+                if (placedIn === correctCategory) {
+                    correctCount++;
+                }
+            });
+            
+            // 显示结果
+            if (correctCount === totalItems) {
+                gameFeedback.textContent = `🎉 Success! All ${totalItems} items are correctly classified!`;
+                gameFeedback.className = 'game-feedback success';
+            } else {
+                gameFeedback.textContent = `You got ${correctCount} out of ${totalItems} correct. Try again!`;
+                gameFeedback.className = 'game-feedback error';
+            }
+        });
+        
+        // 重置游戏
+        resetGameBtn.addEventListener('click', function() {
+            // 清除所有放置的项目
+            categories.forEach(category => {
+                category.querySelectorAll('.item.placed').forEach(item => {
+                    item.remove();
+                });
+            });
+            
+            // 重置项目状态
+            gameItems.forEach(item => {
+                item.dataset.placedIn = '';
+                item.classList.remove('placed');
+            });
+            
+            // 隐藏反馈
+            gameFeedback.className = 'game-feedback';
+            gameFeedback.style.display = 'none';
+        });
+        
+        // 游戏说明
+        console.log(`
+=== 分类游戏指南 ===
+1. 拖动物品到正确的分类（公共品或私人品）
+2. 点击"Check Answers"检查答案
+3. 所有物品分类正确会显示Success!
+4. 点击"Reset Game"重新开始
+
+公共品特征：非排他性 & 非竞争性
+私人品特征：排他性 & 竞争性
+        `);
+    </script>
+</body>
+</html>
